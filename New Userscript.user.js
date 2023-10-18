@@ -21,6 +21,7 @@
     var data = createDataObject();
     var currentStudent;
 
+    // Document ready
     $(document).ready(function() {
         console.log("SKP Document loaded: ", window.location.href, $('.pwr_middle_content .lessonplans').length);
         // Fill out the login
@@ -105,7 +106,14 @@
         menuUpdating = false;
     }
 
+    /* -----------------------------------------------------------------------------------------------------------------------
+        Build the report
+       ----------------------------------------------------------------------------------------------------------------------- */
     function buildReport() {
+        // reload the data --- it may have been updated/loaded in an iFrame
+        data = createDataObject();
+
+
         console.log("Build the report", data);
         console.log($('app-iframe iframe')[0]);
         // console.log($('app-iframe iframe')[0].contentWindow.location.href);
@@ -115,11 +123,13 @@
         $("#skp-report").remove();
         $("app-iframe").before("<div id='skp-report'><h1>Agenda Report</h1></div>");
         $("#skp-report").css("margin", "10px");
-        $("#skp-report").append("<button id='skp-close-button'>Close</button>");
+        // Buttons at the top
+        // ----------------------------------------
+        $("#skp-report").append("<div id='skp-report-buttons'><button id='skp-close-button'>Close</button></div>");
         $('#skp-close-button').click(function() {
             $("#skp-report").remove();
         });
-        $("#skp-report").append("<button id='skp-print-button'>Print</button>");
+        $("#skp-report-buttons").append("<button id='skp-print-button'>Print</button>");
         $('#skp-print-button').click(function() {
             var mywindow = window.open('', 'PRINT', 'height=400,width=600');
 
@@ -134,8 +144,41 @@
             mywindow.print();
             mywindow.close();
         });
+        $("#skp-report-buttons").append("<button id='skp-delete-button'>Delete All Data</button>");
+        $('#skp-delete-button').click(function() {
+            $('#skp-report-buttons').after("<div id='skp-are-you-sure'>Are you sure you want to delete all your data?  You can't undo!!!</div>");
+            $('#skp-are-you-sure').append("<div><button>Yes, I'm sure</button></div>");
+            $('#skp-are-you-sure button').click(function() {
+                data = {};
+                GM_setValue("renweb-saved-data", JSON.stringify(data));
+                buildReport();
+            });
+        });
+        if(data.showAll) {
+            $("#skp-report-buttons").append("<button id='skp-showall-button'>Don't Show All Data</button>");
+            $('#skp-showall-button').click(function() {
+                data.showAll = false;
+                GM_setValue("renweb-saved-data", JSON.stringify(data));
+                buildReport();
+            });
+        } else {
+            $("#skp-report-buttons").append("<button id='skp-showall-button'>Show All Data</button>");
+            $('#skp-showall-button').click(function() {
+                data.showAll = true;
+                GM_setValue("renweb-saved-data", JSON.stringify(data));
+                buildReport();
+            });
+        }
+
+        // each student
+        // ----------------------------------------
         $.each(data.students, function(studentIndex, student) {
             console.log("Building student", student.name, student);
+            if(student.hidden && !data.showAll) {
+                return true;
+            }
+            // build the lists of stuff
+            // ----------------------------------------
             var pendingHomework = [];
             var turnedInHomework = [];
             var gradedHomework = [];
@@ -215,6 +258,20 @@
 
             $("#skp-report").append("<h2></h2>");
             $("#skp-report h2:last").text(student.name);
+            $("#skp-report h2:last").append("<button>Hide</button>");
+            if(student.hidden) {
+                $("#skp-report h2:last button").text("unhide");
+            }
+            $("#skp-report h2:last button").click(function() {
+                if(student.hidden) {
+                    student.hidden = false;
+                } else {
+                    student.hidden = true;
+                }
+                // note: have to save because the build report reload the data
+                GM_setValue("renweb-saved-data", JSON.stringify(data));
+                buildReport();
+            });
             $("#skp-report").append("<h3>Pending Homework</h3>");
             $("#skp-report").append("<div class='skp-column-headings'></div>");
             $("#skp-report .skp-column-headings:last").append("<div>Complete</div>");
@@ -264,6 +321,9 @@
         });
     }
 
+    /* -----------------------------------------------------------------------------------------------------------------------
+        Build the homework item UI
+       ----------------------------------------------------------------------------------------------------------------------- */
     function HomeworkClicked() {
         var studentIndex = parseInt($(this).attr("studentIndex"));
         var student = data.students[studentIndex];
@@ -306,6 +366,10 @@
             $(".skp-homework-edit select option:last").attr("value", grade.id);
         });
         $(".skp-homework-edit select").val(item.gradeId);
+        $(".skp-homework-edit hr:last").before("<div><input class='skp-is-no-homework' type='checkbox'>Is No Homework?&nbsp;&nbsp;</div>");
+        if(item.isNoHomework) {
+            $(".skp-homework-edit input.skp-is-no-homework").prop("checked", true);
+        }
         $(".skp-homework-edit hr:last").before("<button>Save</button>");
         $(".skp-homework-edit button").click(saveHomework);
     };
@@ -326,6 +390,7 @@
         item.dateTurnedIn = $(".skp-homework-edit input.skp-turn-in-date").val();
         item.gradeId = $(".skp-homework-edit select").val();
         item.notes = $(".skp-homework-edit textarea").val();
+        item.isNoHomework = $(".skp-homework-edit input.skp-is-no-homework").is(":checked");
         console.log("Homework saved", this, student, classObj, homework, item, data);
         GM_setValue("renweb-saved-data", JSON.stringify(data));
         buildReport();
@@ -420,9 +485,8 @@
                 $('div.pwr_date_hr,section.lessonplans').each(function(index,element) {
                     if($(element).hasClass('pwr_date_hr')) {
                         currentDate = {"text": $(element).find(".pwr_date").text()};
-                        currentDate.date = Date.parse(currentDate.text);
-                        currentDate.parts = currentDate.text.split("/");
-                        currentDate.sortable = currentDate.parts[2] + "-" + currentDate.parts[0] + "-" + currentDate.parts[1];
+                        currentDate.date = parseDate(currentDate.text);
+                        currentDate.sortable = dateToString(currentDate.date);
                         // console.log("Date: ", currentDate, element);
                     } else {
                         var className = $(element).find('h3').text();
@@ -475,5 +539,45 @@
         }
         console.log("data", data);
         GM_setValue("renweb-saved-data", JSON.stringify(data));
+    }
+
+    /* -----------------------------------------------------------------------------------------------------------------------
+       -----------------------------------------------------------------------------------------------------------------------
+       Utility Functions
+       -----------------------------------------------------------------------------------------------------------------------
+       ----------------------------------------------------------------------------------------------------------------------- */
+    function dateToString(sourceDate) {
+        var year = sourceDate.getFullYear();
+        var month = sourceDate.getMonth() + 1;
+        var day = sourceDate.getDate();
+        if(month < 10) {
+            month = "0" + month;
+        } else {
+            month = "" + month;
+        }
+        if(day < 10) {
+            day = "0" + day;
+        } else {
+            day = "" + day;
+        }
+        return year + "-" + month + "-" + day;
+    }
+    function parseDate(sourceString) {
+        var parts = sourceString.split("-");
+        var year = 0;
+        var month = 0;
+        var day = 0;
+        if(parts.length > 2) {
+            year = parseInt(parts[0]);
+            month = parseInt(parts[1]);
+            day = parseInt(parts[2]);
+        }
+        parts = sourceString.split("/");
+        if(parts.length > 2) {
+            month = parseInt(parts[0]);
+            day = parseInt(parts[1]);
+            year = parseInt(parts[2]);
+        }
+        return new Date(year, month -1, day);
     }
 })();
