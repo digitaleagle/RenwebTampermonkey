@@ -199,8 +199,8 @@
                 var aDate = a.sortable;
                 var bDate = b.sortable;
 
-                if(aDate < bDate) return 1;
-                if(aDate > bDate) return -1;
+                if(aDate < bDate) return -1;
+                if(aDate > bDate) return 1;
                 return 0;
             });
             turnedInHomework.sort(function (a, b) {
@@ -297,7 +297,9 @@
         $(".skp-homework-edit input.skp-turn-in-date").val(item.dateTurnedIn);
         $(".skp-homework-edit hr:last").before("<div><select><option value=' '>Not graded</option></select>");
         $(".skp-homework-edit hr:last").before("<div>Notes<textarea></textarea>");
-        $(".skp-homework-edit textarea").val(item.homeworkItem.notes);
+        if(item.notes !== undefined && item.notes !== null) {
+            $(".skp-homework-edit textarea").val(item.notes);
+        }
         $.each(classObj.grades, function(index, grade) {
             $(".skp-homework-edit select").append("<option></option>");
             $(".skp-homework-edit select option:last").text(grade.title);
