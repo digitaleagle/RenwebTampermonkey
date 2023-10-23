@@ -133,11 +133,19 @@
         });
         $("#skp-report-buttons").append("<button id='skp-print-button'>Print</button>");
         $('#skp-print-button').click(function() {
-            var mywindow = window.open('', 'PRINT', 'height=800,width=1200');
+            // var mywindow = window.open('', 'PRINT', 'height=800,width=1200');
+            var mywindow = window.open('', 'PRINT', '');
+
+            var printContent = $("<div>" + $("#skp-report").html() + "</div>");
+            console.log("before Print content", printContent, printContent.html(), printContent.find("#skp-report-buttons").length);
+            printContent.find("#skp-report-buttons").remove();
+            printContent.find("button").remove();
+            console.log("after Print content", printContent, printContent.html());
 
             mywindow.document.write('<html><head><title>' + document.title  + '</title>');
             mywindow.document.write('</head><body >');
-            mywindow.document.write($("#skp-report").html());
+            // mywindow.document.write($("#skp-report").html());
+            mywindow.document.write(printContent.html());
             mywindow.document.write('</body></html>');
 
             mywindow.document.close(); // necessary for IE >= 10
@@ -145,7 +153,6 @@
                 mywindow.focus(); // necessary for IE >= 10*/
 
                 mywindow.print();
-                mywindow.close();
             }, 500);
         });
         $("#skp-report-buttons").append("<button id='skp-delete-button'>Delete All Data</button>");
@@ -173,7 +180,7 @@
                 buildReport();
             });
         }
-        $("#skp-report-buttons").append("<a target='_newWin' href='https://github.com/digitaleagle/RenwebTampermonkey'>Github</a>");
+        $("#skp-report-buttons").append("<a target='_blank' href='https://github.com/digitaleagle/RenwebTampermonkey'>Github</a>");
         $("#skp-report-buttons button").css('margin-right', '15px');
 
         // each student
