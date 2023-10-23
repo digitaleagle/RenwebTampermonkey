@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Renweb
-// @namespace    http://tampermonkey.net/
+// @namespace    http://digitaleagle.net/
 // @version      0.1
-// @description  try to take over the world!
+// @description  Creating a system to reconcile the homework and grades
 // @author       You
 // @match        https://accounts.renweb.com/*
 // @match        https://familyportal.renweb.com/*
@@ -38,6 +38,7 @@
         }
 
         $('app-left-nav').on('DOMSubtreeModified', updateMenu);
+        updateMenu();
 
         $('.pwr_middle_content').on('DOMSubtreeModified', loadPwrTab);
         currentReport = $('h3.grades_title').text();
@@ -123,6 +124,7 @@
         $("#skp-report").remove();
         $("app-iframe").before("<div id='skp-report'><h1>Agenda Report</h1></div>");
         $("#skp-report").css("margin", "10px");
+
         // Buttons at the top
         // ----------------------------------------
         $("#skp-report").append("<div id='skp-report-buttons'><button id='skp-close-button'>Close</button></div>");
@@ -131,7 +133,7 @@
         });
         $("#skp-report-buttons").append("<button id='skp-print-button'>Print</button>");
         $('#skp-print-button').click(function() {
-            var mywindow = window.open('', 'PRINT', 'height=400,width=600');
+            var mywindow = window.open('', 'PRINT', 'height=800,width=1200');
 
             mywindow.document.write('<html><head><title>' + document.title  + '</title>');
             mywindow.document.write('</head><body >');
@@ -139,10 +141,12 @@
             mywindow.document.write('</body></html>');
 
             mywindow.document.close(); // necessary for IE >= 10
-            mywindow.focus(); // necessary for IE >= 10*/
+            setTimeout(function() {
+                mywindow.focus(); // necessary for IE >= 10*/
 
-            mywindow.print();
-            mywindow.close();
+                mywindow.print();
+                mywindow.close();
+            }, 500);
         });
         $("#skp-report-buttons").append("<button id='skp-delete-button'>Delete All Data</button>");
         $('#skp-delete-button').click(function() {
@@ -169,6 +173,8 @@
                 buildReport();
             });
         }
+        $("#skp-report-buttons").append("<a target='_newWin' href='https://github.com/digitaleagle/RenwebTampermonkey'>Github</a>");
+        $("#skp-report-buttons button").css('margin-right', '15px');
 
         // each student
         // ----------------------------------------
@@ -182,12 +188,13 @@
             var pendingHomework = [];
             var turnedInHomework = [];
             var gradedHomework = [];
+            var poorGrades = [];
             $.each(student.classes, function(classIndex, classObj) {
-                console.log("Building class", classObj.name, classObj);
+                //console.log("Building class", classObj.name, classObj);
                 $.each(classObj.homework, function(homeworkIndex, homework) {
-                    console.log("Building homework", homework);
+                    //console.log("Building homework", homework);
                     $.each(homework.items, function(homeworkItemIndex, homeworkItem) {
-                        console.log("Building Homework item", homeworkItem);
+                        //console.log("Building Homework item", homeworkItem);
                         if(!homeworkItem.isNoHomework) {
                             if(homeworkItem.isTurnedIn) {
                                 if(homeworkItem.gradeId === undefined || homeworkItem.gradeId === null || homeworkItem.gradeId.trim() == "") {
@@ -237,6 +244,19 @@
                         }
                     });
                 });
+                $.each(classObj.grades, function(gradeIndex, grade) {
+                    var average = grade.grade;
+                    average = parseInt(average.replace("Avg:", ""));
+                    if(average < 80) {
+                        poorGrades.push({
+                            "gradeObj": grade,
+                            "grade": average,
+                            "descr": grade.title,
+                            "class": classObj,
+                            "className": classObj.name
+                        });
+                    }
+                });
             });
             pendingHomework.sort(function (a, b) {
                 var aDate = a.sortable;
@@ -254,7 +274,7 @@
                 if(aDate > bDate) return -1;
                 return 0;
             });
-            console.log("Lists built", pendingHomework, turnedInHomework);
+            console.log("Lists built", "data", data, "Pending Homework", pendingHomework, "Turned In", turnedInHomework, "Graded", gradedHomework, "Poor Grades", poorGrades);
 
             $("#skp-report").append("<h2></h2>");
             $("#skp-report h2:last").text(student.name);
@@ -318,6 +338,13 @@
                 $("#skp-report .skp-homework:last").attr('homeworkItemIndex', item.homeworkItemIndex);
             });
             $("#skp-report .skp-homework").click(HomeworkClicked);
+            $("#skp-report").append("<h3>Poor Grades</h3>");
+            $.each(poorGrades, function(index, item) {
+                $("#skp-report").append("<div class='skp-grade'></div>");
+                $("#skp-report .skp-grade:last").css("margin-top", "10px");
+                $("#skp-report .skp-grade:last").css("cursor", "pointer");
+                $("#skp-report .skp-grade:last").text(item.className + " -- " + item.descr + ": " + item.grade);
+            });
         });
     }
 
@@ -579,5 +606,10 @@
             year = parseInt(parts[2]);
         }
         return new Date(year, month -1, day);
+    }
+
+    //  https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 })();
