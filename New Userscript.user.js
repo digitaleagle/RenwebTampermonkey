@@ -87,9 +87,9 @@
     }
 
     function updateMenu() {
-        // console.log("Nav Changed!");
+        console.log("Nav Changed!");
         if($('.skp-menu-item').length > 0) {
-            // console.log("Already updated");
+            console.log("Already updated");
             return;
         }
         if($('app-left-nav ul:first').length == 0) {
@@ -180,6 +180,20 @@
                 buildReport();
             });
         }
+        $("#skp-report-buttons").append("<button id='skp-backup-button'>Backup</button>");
+        $('#skp-backup-button').click(function() {
+            $("#skp-report-buttons").after("<div id='skp-backup-area'><textarea></textarea></div>");
+            $("#skp-backup-area textarea").val(JSON.stringify(data));
+            $("#skp-backup-area textarea").css("width", "100%");
+            $("#skp-backup-area textarea").css("height", "200px");
+        });
+        $("#skp-report-buttons").append("<button id='skp-restore-button'>Restore</button>");
+        $('#skp-restore-button').click(function() {
+            $("#skp-report-buttons").after("<div id='skp-backup-area'><textarea></textarea></div>");
+            $("#skp-backup-area textarea").css("width", "100%");
+            $("#skp-backup-area textarea").css("height", "200px");
+            $("#skp-backup-area").append("<button id='skp-do-restore-button'>Restore</button>");
+        });
         $("#skp-report-buttons").append("<a target='_blank' href='https://github.com/digitaleagle/RenwebTampermonkey'>Github</a>");
         $("#skp-report-buttons button").css('margin-right', '15px');
 
