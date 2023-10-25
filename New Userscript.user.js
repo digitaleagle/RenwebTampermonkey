@@ -193,6 +193,14 @@
             $("#skp-backup-area textarea").css("width", "100%");
             $("#skp-backup-area textarea").css("height", "200px");
             $("#skp-backup-area").append("<button id='skp-do-restore-button'>Restore</button>");
+            $('#skp-do-restore-button').click(function() {
+                $('#skp-do-restore-button').remove();
+                $('#skp-backup-area').append("<div>Are you sure? This will delete everything.  Maybe backup first?</div><button id='skp-restore-anyway-button'>Yes, restore anyway</button>");
+                $('#skp-restore-anyway-button').click(function() {
+                    GM_setValue("renweb-saved-data", $('#skp-backup-area textarea').val());
+                    buildReport();
+                });
+            });
         });
         $("#skp-report-buttons").append("<a target='_blank' href='https://github.com/digitaleagle/RenwebTampermonkey'>Github</a>");
         $("#skp-report-buttons button").css('margin-right', '15px');
@@ -216,7 +224,7 @@
                     //console.log("Building homework", homework);
                     $.each(homework.items, function(homeworkItemIndex, homeworkItem) {
                         //console.log("Building Homework item", homeworkItem);
-                        if(!homeworkItem.isNoHomework) {
+                        if(!homeworkItem.isNoHomework && !homeworkItem.isSameAs) {
                             if(homeworkItem.isTurnedIn) {
                                 if(homeworkItem.gradeId === undefined || homeworkItem.gradeId === null || homeworkItem.gradeId.trim() == "") {
                                     turnedInHomework.push({
@@ -248,11 +256,17 @@
                                     });
                                 }
                             } else {
+                                var actualDueDate = homeworkItem.actualDueDate;
+                                if(actualDueDate === undefined || actualDueDate === null || actualDueDate == "") {
+                                    actualDueDate = homeworkItem.date;
+                                }
                                 pendingHomework.push({
                                     "class": classObj,
                                     "className": classObj.name,
-                                    "date": homeworkItem.date,
-                                    "sortable": homework.date.sortable,
+                                    //"date": homeworkItem.date,
+                                    "date": actualDueDate,
+                                    //"sortable": homework.date.sortable,
+                                    "sortable": actualDueDate,
                                     "homeworkItem": homeworkItem,
                                     "homework": homework,
                                     "name": homeworkItem.text,
@@ -381,7 +395,7 @@
         var homework = classObj.homework[homeworkIndex];
         var homeworkItemIndex = parseInt($(this).attr("homeworkItemIndex"));
         var item = homework.items[homeworkItemIndex];
-        console.log("Homemwork clicked", this, student, classObj, homework, item);
+        console.log("Homemwork clicked", this, "Student: ", student, "Class: ", classObj, "Homework:", homework, "Homework Item:", item);
 
         $(".skp-homework-edit").remove();
         $(this).after("<div class='skp-homework-edit'><hr><hr></div>");
@@ -393,6 +407,8 @@
         $(".skp-homework-edit div:last span").text(classObj.name);
         $(".skp-homework-edit hr:last").before("<div>Homework: <span></span></div>");
         $(".skp-homework-edit div:last span").text(item.text);
+        $(".skp-homework-edit hr:last").before("<div>Homework Date: <span></span></div>");
+        $(".skp-homework-edit div:last span").text(item.date);
         $(".skp-homework-edit hr:last").before("<div><input class='skp-is-complete' type='checkbox'>Is Complete?&nbsp;&nbsp;<input type='date' class='skp-complete-date'></div>");
         if(item.isComplete) {
             $(".skp-homework-edit input.skp-is-complete").prop("checked", true);
@@ -403,25 +419,45 @@
             $(".skp-homework-edit input.skp-is-turned-in").prop("checked", true);
         }
         $(".skp-homework-edit input.skp-turn-in-date").val(item.dateTurnedIn);
-        $(".skp-homework-edit hr:last").before("<div><select><option value=' '>Not graded</option></select>");
-        $(".skp-homework-edit hr:last").before("<div>Notes<textarea></textarea>");
-        if(item.notes !== undefined && item.notes !== null) {
-            $(".skp-homework-edit textarea").val(item.notes);
-        }
+        $(".skp-homework-edit hr:last").before("<div><select id='skp-grade-select'><option value=' '>Not graded</option></select>");
         $.each(classObj.grades, function(index, grade) {
             $(".skp-homework-edit select").append("<option></option>");
             $(".skp-homework-edit select option:last").text(grade.title);
             $(".skp-homework-edit select option:last").attr("value", grade.id);
         });
         $(".skp-homework-edit select").val(item.gradeId);
+        $(".skp-homework-edit hr:last").before("<div>Actual due date (if different)&nbsp;&nbsp;<input type='date' class='skp-actual-due-date'></div>");
+        $(".skp-homework-edit hr:last").before("<div>Notes<textarea></textarea>");
+        if(item.notes !== undefined && item.notes !== null) {
+            $(".skp-homework-edit textarea").val(item.notes);
+        }
         $(".skp-homework-edit hr:last").before("<div><input class='skp-is-no-homework' type='checkbox'>Is No Homework?&nbsp;&nbsp;</div>");
         if(item.isNoHomework) {
             $(".skp-homework-edit input.skp-is-no-homework").prop("checked", true);
+        }
+        $(".skp-homework-edit hr:last").before("<div><select id='skp-sameas-select'><option value=' '>Not same as any assignment</option></select>");
+        $.each(classObj.homework, function(i1, homework) {
+            $.each(homework.items, function(i2, item) {
+                if(item.isNoHomework && item.isSameAs) {
+                    // don't add if it is not homework
+                    return true;
+                }
+                $(".skp-homework-edit select:last").append("<option></option>");
+                $(".skp-homework-edit select:last option:last").text(homework.date.sortable + ": " + item.text);
+                $(".skp-homework-edit select:last option:last").attr("value", homework.date.sortable + ":" + i2);
+            });
+        });
+        $(".skp-homework-edit select:last").css('width', '300px');
+        if(item.isSameAs) {
+            $(".skp-homework-edit select:last").val(item.sameAs);
         }
         $(".skp-homework-edit hr:last").before("<button>Save</button>");
         $(".skp-homework-edit button").click(saveHomework);
     };
 
+    /* -----------------------------------------------------------------------------------------------------------------------
+        Save Homework Updates
+       ----------------------------------------------------------------------------------------------------------------------- */
     function saveHomework() {
         var studentIndex = parseInt($(".skp-homework-edit").attr("studentIndex"));
         var student = data.students[studentIndex];
@@ -436,9 +472,20 @@
         item.isTurnedIn = $(".skp-homework-edit input.skp-is-turned-in").is(":checked");
         item.dateComplete = $(".skp-homework-edit input.skp-complete-date").val();
         item.dateTurnedIn = $(".skp-homework-edit input.skp-turn-in-date").val();
-        item.gradeId = $(".skp-homework-edit select").val();
+        item.gradeId = $("#skp-grade-select").val();
         item.notes = $(".skp-homework-edit textarea").val();
         item.isNoHomework = $(".skp-homework-edit input.skp-is-no-homework").is(":checked");
+        item.actualDueDate = $(".skp-homework-edit input.skp-actual-due-date").val();
+        var sameAs = $('#skp-sameas-select').val();
+        if(sameAs.trim() == "") {
+            item.isSameAs = false;
+        } else {
+            item.isSameAs = true;
+            var splits = sameAs.split(":");
+            item.sameAsDate = splits[0];
+            item.sameAsIndex = parseInt(splits[1]);
+            item.sameAs = sameAs;
+        }
         console.log("Homework saved", this, student, classObj, homework, item, data);
         GM_setValue("renweb-saved-data", JSON.stringify(data));
         buildReport();
