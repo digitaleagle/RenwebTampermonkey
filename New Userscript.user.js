@@ -37,8 +37,10 @@
             }
         }
 
-        $('app-left-nav').on('DOMSubtreeModified', updateMenu);
-        updateMenu();
+        setTimeout(function() {
+            $('app-left-nav').on('DOMSubtreeModified', updateMenu);
+            updateMenu();
+        }, 500);
 
         $('.pwr_middle_content').on('DOMSubtreeModified', loadPwrTab);
         currentReport = $('h3.grades_title').text();
@@ -313,7 +315,7 @@
 
             $("#skp-report").append("<h2></h2>");
             $("#skp-report h2:last").text(student.name);
-            $("#skp-report h2:last").append("<button>Hide</button>");
+            $("#skp-report h2:last").append("&nbsp;&nbsp;&nbsp;<button>Hide</button>");
             if(student.hidden) {
                 $("#skp-report h2:last button").text("unhide");
             }
@@ -328,6 +330,51 @@
                 buildReport();
             });
             $("#skp-report").append("<h3>Pending Homework</h3>");
+            // Add button to add in homework
+            $("#skp-report h3:last").append("&nbsp;&nbsp;&nbsp;<button id='skp-add-hw'>Add Homework</button>");
+            $("#skp-add-hw").click(function() {
+                $("#skp-add-hw").parent().after("<div id='skp-add-hw-section'></div>");
+                $("#skp-add-hw-section").append("<input type='text' id='skp-hw-name'>");
+                $("#skp-add-hw-section").append("<br><select id='skp-hw-class'>");
+                $("#skp-add-hw").remove();
+                $.each(student.classes, function(index, cls) {
+                    $("#skp-hw-class").append("<option></option>");
+                    $("#skp-hw-class option:last").attr("value", index);
+                    $("#skp-hw-class option:last").text(cls.name);
+                });
+                $("#skp-add-hw-section").append("<br><button>Add</button>");
+                $("#skp-add-hw-section button").click(function() {
+                    var classIndex = parseInt($("#skp-hw-class").val());
+                    var classObj = student.classes[classIndex];
+                    var homeworkDate = new Date();
+                    var newText = $("#skp-hw-name").val();
+                    console.log("Add Homework", student, classIndex, classObj, newText);
+                    classObj.homework[classObj.homework.length] = {
+                        "date": {
+                            "text": (homeworkDate.getMonth() + 1) + "/" + homeworkDate.getDate() + "/" + homeworkDate.getFullYear(),
+                            "date": homeworkDate + "",
+                            "sortable": dateToString(homeworkDate)
+                        },
+                        "items": [
+                            {
+                                "date": dateToString(homeworkDate),
+                                "dateComplete": "",
+                                "dateTurnedIn": "",
+                                "gradeId": null,
+                                "isComplete": false,
+                                "isNoHomework": false,
+                                "isTurnedIn": false,
+                                "notes": "",
+                                "text": newText
+                            }
+                        ],
+                        "text": newText
+                    }
+                    console.log("Homework added ...", classObj.homework);
+                    GM_setValue("renweb-saved-data", JSON.stringify(data));
+                    buildReport();
+                });
+            });
             $("#skp-report").append("<div class='skp-column-headings'></div>");
             $("#skp-report .skp-column-headings:last").append("<div>Complete</div>");
             $("#skp-report .skp-column-headings:last").append("<div>Turned In</div>");
@@ -448,6 +495,7 @@
             });
         });
         $(".skp-homework-edit select:last").css('width', '300px');
+        $(".skp-homework-edit select").css('max-width', '100%');
         if(item.isSameAs) {
             $(".skp-homework-edit select:last").val(item.sameAs);
         }
