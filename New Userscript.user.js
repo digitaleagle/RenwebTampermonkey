@@ -38,7 +38,8 @@
         }
 
         setTimeout(function() {
-            $('app-left-nav').on('DOMSubtreeModified', updateMenu);
+            /* This was from when I was relying on a dynamic portion of the menu
+            $('mat-sidenav').on('DOMSubtreeModified', updateMenu);  */
             updateMenu();
         }, 500);
 
@@ -89,22 +90,24 @@
     }
 
     function updateMenu() {
-        console.log("Nav Changed!");
+        console.log("Nav Changed!", $('#nav_logo_container ul:first').length);
         if($('.skp-menu-item').length > 0) {
             console.log("Already updated");
             return;
         }
-        if($('app-left-nav ul:first').length == 0) {
+        /*   This was before when I was relying on part that was dynamically loading...
+        if($('#nav_logo_container ul:first').length == 0) {
             console.log("Menu not loaded yet");
             return;
-        }
+        } */
         if(menuUpdating) {
             console.log("Menu currently updating, bailing!");
             return;
         }
         menuUpdating = true;
         console.log("Updating the menu!");
-        $('app-left-nav ul:first').append('<li class="ng-star-inserted skp-menu-item"><a><i class="material-icons pwr_header-icon">summarize</i>Stephen\'s Report</a></li>');
+        // $('#nav_logo_container ul:first').append('<li class="ng-star-inserted skp-menu-item"><a><i class="material-icons pwr_header-icon">summarize</i>Stephen\'s Report</a></li>');
+        $('mat-sidenav ul:first').append('<li class="ng-star-inserted skp-menu-item"><a><i class="material-icons pwr_header-icon">summarize</i>Stephen\'s Report</a></li>');
         $('.skp-menu-item a').click(buildReport);
         menuUpdating = false;
     }
@@ -121,10 +124,10 @@
         console.log($('app-iframe iframe')[0]);
         // console.log($('app-iframe iframe')[0].contentWindow.location.href);
         //$('app-iframe iframe')[0].contentWindow.location.replace("https://gce-fl.client.renweb.com/pwr/student/homework.cfm");
-        $('app-iframe iframe')[0].contentWindow.location.replace("about:blank");
+        $('mat-sidenav-content iframe')[0].contentWindow.location.replace("about:blank");
         console.log($("app-iframe").parent()[0]);
         $("#skp-report").remove();
-        $("app-iframe").before("<div id='skp-report'><h1>Agenda Report</h1></div>");
+        $("mat-sidenav-content iframe").before("<div id='skp-report'><h1>Agenda Report</h1></div>");
         $("#skp-report").css("margin", "10px");
 
         // Buttons at the top
